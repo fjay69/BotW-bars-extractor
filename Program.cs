@@ -30,7 +30,11 @@ namespace BotW_bars_extractor
             Directory.CreateDirectory(input_folder);
                         
             //first 4 bytes form the word BARS(42 41 52 53)
-            bread.ReadChars(4);
+            string bars = new string(bread.ReadChars(4));
+            if (bars != "BARS") {
+                System.Console.WriteLine("Not a valid .bars file");
+                return;
+            }
             //starting byte 0x4 is the lenght of the file, 4 bytes long. maximum file size would be 16777215 bytes.
             uint file_size = readInt32be(bread);
             //next 4 bytes seem to be always the same(FE FF 01 01).
@@ -78,22 +82,15 @@ namespace BotW_bars_extractor
                     //if the.bars doesn't have bfwav's inside then that second value is null(FF FF FF FF).
                     if (entries[i] == 0xffffffff) continue;
                     bread.BaseStream.Position = entries[i];
-
                     bwrite = new BinaryWriter(File.Open(input_folder + filesToCreate[i- entries.Count / 2].name, FileMode.Create));
 
-                    for (uint ik = 0; ik < 64; ik++)
-                        bwrite.Write(bread.ReadByte());
-                    
-                    readInt32be(bread);//INFO
-                    uint chunk_size = readInt32be(bread);
-                    bread.BaseStream.Position -= 8;
-                    for (uint ik = 0; ik < chunk_size; ik++)
-                        bwrite.Write(bread.ReadByte());
-                    
-                    readInt32be(bread);//DATA
-                    chunk_size = readInt32be(bread);
-                    bread.BaseStream.Position -= 8;
-                    for (uint ik = 0; ik < chunk_size; ik++)
+                    bread.ReadBytes(4);//FWAV
+                    bread.ReadBytes(2);//Byte order (feff)
+                    bread.ReadBytes(2);//Header size(0040)
+                    bread.ReadBytes(4);//Unknown
+                    uint fwav_size = readInt32be(bread);
+                    bread.BaseStream.Position -= 16;
+                    for (uint ik = 0; ik < fwav_size; ik++)
                         bwrite.Write(bread.ReadByte());
                 }
             }
